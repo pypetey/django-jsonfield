@@ -1,6 +1,8 @@
 import copy
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
+from django import VERSION
+
 try:
     from django.utils import six
 except ImportError:
@@ -12,13 +14,23 @@ except ImportError:
     from django.utils import simplejson as json
 
 from django.forms import fields
+from django import VERSION
+
 try:
     from django.forms.utils import ValidationError
 except ImportError:
     from django.forms.util import ValidationError
 
-from .subclassing import SubfieldBase
 from .encoder import JSONEncoder
+
+
+
+if VERSION >= (1, 8):
+    _JSONFieldBase = models.TextField
+else:
+    # Django < 1.8, deprecated code, remove it after Django 1.9 release (in December 2015)
+    _JSONFieldBase = six.with_metaclass(models.SubfieldBase, models.TextField)
+
 
 
 class JSONFormFieldBase(object):
@@ -54,8 +66,7 @@ class JSONCharFormField(JSONFormFieldBase, fields.CharField):
     pass
 
 
-class JSONFieldBase(six.with_metaclass(SubfieldBase, models.Field)):
-
+class JSONFieldBase(_JSONFieldBase):
     def __init__(self, *args, **kwargs):
         self.dump_kwargs = kwargs.pop('dump_kwargs', {
             'cls': JSONEncoder,
@@ -170,6 +181,7 @@ class JSONCharField(JSONFieldBase, models.CharField):
 
 try:
     from south.modelsinspector import add_introspection_rules
+
     add_introspection_rules([], ["^jsonfield\.fields\.(JSONField|JSONCharField)"])
 except ImportError:
     pass
